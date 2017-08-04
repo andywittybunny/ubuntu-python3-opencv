@@ -75,6 +75,46 @@ RUN chmod +x /root/install_imagequant.sh && /root/install_imagequant.sh
 RUN pip3 install Pillow==3.4.2 --global-option="build_ext" --global-option="--enable-imagequant" -I
 
 RUN add-apt-repository universe && apt-get update && apt-get install -y supervisor
+RUN apt-get install -y autoconf
+RUN git clone https://github.com/pornel/giflossy.git && cd giflossy  && autoreconf -i && \
+ ./configure --disable-gifview && make install
+RUN rm -rf giflossy
 
+#install torch
+WORKDIR /root/
+RUN curl -s https://raw.githubusercontent.com/torch/ezinstall/master/install-deps | bash -e
+RUN git clone https://github.com/torch/distro.git ~/torch --recursive
+WORKDIR torch
+RUN ./install.sh && \
+    cd install/bin && \
+    ./luarocks install nn && \
+    ./luarocks install dpnn && \
+    ./luarocks install image && \
+    ./luarocks install optim && \
+    ./luarocks install csvigo && \
+    ./luarocks install torchx && \
+    ./luarocks install tds
+
+
+RUN ln -s /root/torch/install/bin/* /usr/local/bin
+#SETUP Openface
+RUN pip3 install protobuf
+RUN apt-get install -y \
+    graphicsmagick \
+    python3-pandas \
+    wget \
+    zip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+WORKDIR /root/
+RUN git clone https://github.com/cmusatyalab/openface.git
+WORKDIR /root/openface/
+RUN pip3 install helper
+RUN pip3 install data
+RUN python3 setup.py install #install openface
+RUN pip3 install django-redis pyphen scikit-learn
+RUN rm /usr/local/lib/python3.4/dist-packages/openface/torch_neural_net.py
+RUN rm /root/openface/openface/torch_neural_net.py
+ADD torch_neural_net.py /usr/local/lib/python3.4/dist-packages/openface/torch_neural_net.py
+ADD torch_neural_net.py /root/openface/openface/torch_neural_net.py
 RUN apt-get clean \
     && rm -rf /var/lib/apt/lists/*
